@@ -1,4 +1,5 @@
 import ReplacementsInterface from '../interfaces/replacements';
+import { isValidElement, ReactNode } from 'react';
 
 /**
  * Make the place-holder replacements on a line.
@@ -6,16 +7,43 @@ import ReplacementsInterface from '../interfaces/replacements';
  * @param message
  * @param replacements
  */
-export default function replacer(message: string, replacements?: ReplacementsInterface): string {
-  if (!replacements) return message;
+export default function replacer(message: string, replacements?: ReplacementsInterface): ReactNode[] {
+  if (!replacements) return [message];
 
-  const patterns = Object.entries(replacements).flatMap(([key, value]) => [
-    { pattern: new RegExp(`:${key}`, 'g'), replacement: value.toString() },
-    { pattern: new RegExp(`:${key.toUpperCase()}`, 'g'), replacement: value.toString().toUpperCase() },
-    { pattern: new RegExp(`:${capitalize(key)}`, 'g'), replacement: capitalize(value.toString()) }
-  ]);
+  const keys = [...new Set(Object.keys(replacements))];
 
-  return patterns.reduce((result, { pattern, replacement }) => result.replace(pattern, replacement), message);
+  const regex = new RegExp(`(:${keys.join('|:')})`, 'gi');
+
+
+  const parts = message.split(regex).filter(Boolean);
+
+  const replaced = parts.reduce<ReactNode[]>((acc, p) => {
+    const placeholder = p;
+    const label = p.slice(1);
+    if (!placeholder.startsWith(':') || !keys.map((k) => k.toLowerCase()).includes(label.toLowerCase()))
+      return [...acc, placeholder];
+
+    if (replacements[label]) return [...acc, replacements[label]];
+
+    if (label.toUpperCase() === label) {
+      const replacement = replacements[label.toLowerCase()]!;
+      return [...acc, replacement.toString().toUpperCase()];
+    }
+
+    if (label.charAt(0).toUpperCase() === label.charAt(0)) {
+      const replacement = replacements[label.toLowerCase()]!;
+      return [...acc, capitalize(replacement.toString())];
+    }
+
+    const replacement = replacements[label.toLowerCase()]!;
+    if (isValidElement(replacement)) {
+      return [...acc, replacement];
+    }
+
+    return [...acc, replacement.toString()];
+  }, []);
+
+  return replaced;
 }
 
 /**
