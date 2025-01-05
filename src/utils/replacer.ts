@@ -10,40 +10,35 @@ import { isValidElement, ReactNode } from 'react';
 export default function replacer(message: string, replacements?: ReplacementsInterface): ReactNode[] {
   if (!replacements) return [message];
 
-  const keys = [...new Set(Object.keys(replacements))];
-
+  const keys = Object.keys(replacements);
+  const lowerLabels = keys.map((key) => key.toLowerCase());
   const regex = new RegExp(`(:${keys.join('|:')})`, 'gi');
 
+  return message
+    .split(regex)
+    .filter(Boolean)
+    .map((seg) => {
+      if (!seg.startsWith(':')) return seg;
 
-  const parts = message.split(regex).filter(Boolean);
+      const s = seg;
+      const label = s.slice(1);
+      const lowerLabel = label.toLowerCase();
 
-  const replaced = parts.reduce<ReactNode[]>((acc, p) => {
-    const placeholder = p;
-    const label = p.slice(1);
-    if (!placeholder.startsWith(':') || !keys.map((k) => k.toLowerCase()).includes(label.toLowerCase()))
-      return [...acc, placeholder];
+      if (!lowerLabels.includes(lowerLabel)) return seg;
 
-    if (replacements[label]) return [...acc, replacements[label]];
+      if (replacements[label]) return replacements[label];
 
-    if (label.toUpperCase() === label) {
-      const replacement = replacements[label.toLowerCase()]!;
-      return [...acc, replacement.toString().toUpperCase()];
-    }
+      const replacement = replacements[lowerLabel];
+      if (!replacement) return seg;
 
-    if (label.charAt(0).toUpperCase() === label.charAt(0)) {
-      const replacement = replacements[label.toLowerCase()]!;
-      return [...acc, capitalize(replacement.toString())];
-    }
+      if (isValidElement(replacement)) return replacement;
 
-    const replacement = replacements[label.toLowerCase()]!;
-    if (isValidElement(replacement)) {
-      return [...acc, replacement];
-    }
+      if (label === label.toUpperCase()) return replacement.toString().toUpperCase();
 
-    return [...acc, replacement.toString()];
-  }, []);
+      if (label[0] === label[0].toUpperCase()) return capitalize(replacement.toString());
 
-  return replaced;
+      return replacement.toString();
+    });
 }
 
 /**
