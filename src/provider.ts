@@ -170,8 +170,8 @@ export default function LaravelReactI18nProvider({ children, ssr, ...currentOpti
     const locale = isLocale(options.locale) ? options.locale : options.fallbackLocale;
 
     return replacer(pluralization(message, number, locale), {
+      count: number.toString(),
       ...replacements,
-      count: number.toString()
     });
   }
 
